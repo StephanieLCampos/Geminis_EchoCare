@@ -43,7 +43,7 @@ Phase 4:                   INTEGRATION
 **Frontend**: React Native, Expo, React Navigation, Redux Toolkit, React Native Paper, Expo AV
 **Backend**: Node.js, Express.js, MongoDB, Mongoose, JWT, Multer
 **External APIs**: ElevenLabs, Twilio, Google Cloud Translation, Firebase Cloud Messaging
-**Storage**: AWS S3
+**Storage**: AMD Cloud Storage
 **DevOps**: AMD Cloud, Redis, Bull Queue, Node-cron
 
 ---
@@ -1192,7 +1192,7 @@ TECH STACK:
 - JWT for authentication
 - bcrypt for password hashing
 - Multer for file uploads
-- AWS S3 for file storage
+- AMD Cloud Storage for file storage
 
 PROJECT SETUP:
 ```bash
@@ -1200,7 +1200,7 @@ mkdir backend && cd backend
 npm init -y
 npm install express mongoose dotenv cors helmet morgan
 npm install jsonwebtoken bcryptjs
-npm install multer aws-sdk uuid
+npm install multer uuid
 npm install -D nodemon
 ```
 
@@ -1376,7 +1376,7 @@ exports.registerCaregiver = async (req, res) => {
 
   // Handle voice sample upload
   if (req.file) {
-    const voiceUrl = await uploadToS3(req.file, 'voice-samples');
+    const voiceUrl = await uploadToAMDCloud(req.file, 'voice-samples');
     user.voiceSampleUrl = voiceUrl;
   }
 
@@ -1430,7 +1430,7 @@ exports.createElderly = async (req, res) => {
   });
 
   if (req.file) {
-    const imageUrl = await uploadToS3(req.file, 'elderly-profiles');
+    const imageUrl = await uploadToAMDCloud(req.file, 'elderly-profiles');
     elderly.profileImage = imageUrl;
   }
 
@@ -1472,7 +1472,7 @@ exports.createReminder = async (req, res) => {
 
   if (req.file) {
     const folder = type === 'video' ? 'videos' : 'audio';
-    const mediaUrl = await uploadToS3(req.file, folder);
+    const mediaUrl = await uploadToAMDCloud(req.file, folder);
     reminder.mediaUrl = mediaUrl;
   }
 
@@ -1552,7 +1552,7 @@ SUCCESS CRITERIA:
 - All models are defined with proper indexes
 - Both authentication flows work (email/password and access key)
 - CRUD operations for all entities function correctly
-- File uploads work with S3
+- File uploads work with AMD Cloud Storage
 - API responses are consistent (same format everywhere)
 - Error handling is robust
 ```
@@ -1579,7 +1579,7 @@ You are handling the "magic" of EchoCare - voice cloning with ElevenLabs, transl
 #### Phase 1: ElevenLabs Setup
 - [ ] Create ElevenLabs account and get API key
 - [ ] Build voice cloning endpoint (`POST /api/notifications/voice-clone`)
-  - Download voice sample from S3
+  - Download voice sample from AMD Cloud Storage
   - Send to ElevenLabs API
   - Store returned voice_id in user record
 - [ ] Test voice clone creation with sample audio
@@ -1603,7 +1603,7 @@ You are handling the "magic" of EchoCare - voice cloning with ElevenLabs, transl
 - [ ] Generate summaries for video transcripts and text content
 
 #### Phase 4: Media Storage & URLs
-- [ ] Upload generated audio to S3
+- [ ] Upload generated audio to AMD Cloud Storage
 - [ ] Return signed URLs for media access
 - [ ] Ensure URLs work in frontend audio players
 - [ ] Handle audio format compatibility
@@ -1626,7 +1626,7 @@ TECH STACK:
 - ElevenLabs API (voice cloning + text-to-speech)
 - Google Cloud Translation API
 - OpenAI API (for summaries) or AMD-hosted LLM (coordinate with Ray)
-- AWS S3 (for generated audio storage)
+- AMD Cloud Storage (for generated audio storage)
 
 YOUR ENDPOINTS:
 ```
@@ -1695,9 +1695,9 @@ exports.generateSpeech = async (text, voiceId) => {
     }
   );
 
-  // Upload to S3 and return URL
+  // Upload to AMD Cloud Storage and return URL
   const audioBuffer = Buffer.from(response.data);
-  const audioUrl = await uploadBufferToS3(audioBuffer, 'generated-audio', 'audio/mpeg');
+  const audioUrl = await uploadBufferToAMDCloud(audioBuffer, 'generated-audio', 'audio/mpeg');
   return audioUrl;
 };
 ```
@@ -1734,8 +1734,8 @@ exports.processVoiceSample = async (req, res) => {
     return res.status(400).json({ error: 'No voice sample uploaded' });
   }
 
-  // Download from S3
-  const audioBuffer = await downloadFromS3(user.voiceSampleUrl);
+  // Download from AMD Cloud Storage
+  const audioBuffer = await downloadFromAMDCloud(user.voiceSampleUrl);
 
   // Create voice clone
   const voiceId = await createVoiceClone(audioBuffer, user.name);
