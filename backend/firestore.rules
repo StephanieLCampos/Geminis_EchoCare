@@ -11,6 +11,18 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == userId;
     }
 
+    // Caregiver collection (NEW)
+    match /caregivers/{userId} {
+      // Caregiver can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Cloud Functions create new caregivers (no auth required for signup)
+      allow create: if true;
+      // Caregiver can update their own profile
+      allow update: if request.auth != null && request.auth.uid == userId;
+      // Caregiver can delete their account
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
     // Elderly profiles
     match /elderly/{elderlyId} {
       // Caregiver or elderly can read
