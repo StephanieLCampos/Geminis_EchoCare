@@ -1,0 +1,6 @@
+# Add these lines to your shell config (~/.zprofile or ~/.zshrc):
+# Then run: source ~/.zprofile  (or source ~/.zshrc)
+
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
+export PATH=$PATH:$ANDROID_HOME/tools

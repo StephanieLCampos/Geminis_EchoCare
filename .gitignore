@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+node_modules*
+
+# Environment (API keys, secrets)
+.env
+.env.local
+.env.*.local
+voice-backend/.env
+
+# Expo
+.expo/
+dist/
+web-build/
+
+# Debug
+npm-debug.log*
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build outputs
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Firebase
+.firebase/
+*.cache
+
+# Voice backend outputs
+voice-backend/output/
+voice-backend/uploads/
