@@ -29,32 +29,33 @@ const buildAccessKey = (): string => {
   return accessKey;
 };
 
-// Generates unique access key by checking Firestore for collisions
-// Retries up to 10 times to ensure uniqueness
 const generateUniqueAccessKey = async (): Promise<string> => {
-  // Try up to 10 times to avoid collision with existing keys
   for (let attempt = 0; attempt < 10; attempt++) {
     const candidateKey = buildAccessKey();
-    const existing = await admin.firestore()
-      .collection("elderly")
-      .where("accessKey", "==", candidateKey)
-      .where("isActive", "==", true)
-      .limit(1)
-      .get();
 
-    if (existing.empty) {
-      return candidateKey;
+    try {
+      // Query ONLY by accessKey
+      const existing = await admin.firestore()
+        .collection("elderly")
+        .where("accessKey", "==", candidateKey)
+        .limit(1)
+        .get();
+
+      if (existing.empty) {
+        return candidateKey;
+      }
+    } catch (error) {
+      console.error(`Attempt ${attempt} failed:`, error);
+      continue;
     }
   }
 
   throw new HttpsError("resource-exhausted", "Unable to generate access key");
 };
 
-// Cloud Function: Creates new elderly profile (caregiver-only)
 export const createElderlyProfile = onCall(
   {region: "us-west1"},
   async (request: CallableRequest<CreateElderlyProfileRequest>) => {
-    // Verify caregiver authentication
     if (!request.auth?.uid) {
       throw new HttpsError("unauthenticated", "Authentication required");
     }
@@ -62,17 +63,14 @@ export const createElderlyProfile = onCall(
     const {name, notes = ""} = request.data;
     const caregiverId = request.auth.uid;
 
-    // Validate required fields
     if (!name) {
       throw new HttpsError("invalid-argument", "Elderly name is required");
     }
 
     try {
-      // Generate unique access key for elderly login
       const accessKey = await generateUniqueAccessKey();
 
-      // Create elderly profile without auth field first to get real ID
-      // This allows us to use the actual doc ID for the custom token
+      // Create elderly profile - SIMPLIFIED (no auth field)
       const elderlyRef = await admin.firestore()
         .collection("elderly")
         .add({
@@ -87,33 +85,25 @@ export const createElderlyProfile = onCall(
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
 
-      // Create custom token with actual elderlyId
+      // Create custom token with elderly ID
       const customToken = await admin
         .auth()
-        .createCustomToken(
-          elderlyRef.id,
-          {
-            role: "elderly",
-          }
-        );
-
-      // Update document with auth token
-      await elderlyRef.update({
-        auth: {
-          customToken,
-          tokenIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
-        },
-      });
+        .createCustomToken(elderlyRef.id, {
+          role: "elderly",
+        });
 
       return {
         success: true,
         elderlyId: elderlyRef.id,
         name,
         accessKey,
+        customToken,
         message: "Elderly profile created successfully",
       };
     } catch (error) {
-      throw new HttpsError("internal", "Failed to create elderly profile");
+      console.error("createElderlyProfile error:", error);
+      const msg = `Failed to create elderly profile: ${error}`;
+      throw new HttpsError("internal", msg);
     }
   }
 );

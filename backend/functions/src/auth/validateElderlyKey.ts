@@ -43,7 +43,7 @@ export const validateElderlyKey = onCall(
 
     // Fetch caregiver info to include name in response
     const caregiverDoc = await admin.firestore()
-      .collection("users")
+      .collection("caregivers")
       .doc(elderlyData.caregiverId)
       .get();
 
