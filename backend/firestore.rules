@@ -1,0 +1,67 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Caregiver profiles
+    match /users/{userId} {
+      // Only authenticated users can read their own profile
+      allow read: if request.auth != null && request.auth.uid == userId;
+      // Only the user can update their own profile
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Elderly profiles
+    match /elderly/{elderlyId} {
+      // Caregiver or elderly can read
+      allow read: if request.auth != null && (
+        resource.data.caregiverId == request.auth.uid ||
+        request.auth.token.elderlyId == elderlyId
+      );
+      
+      // Only caregiver can create/update/delete elderly profiles
+      allow create, update, delete: if request.auth != null &&
+        request.auth.uid == request.resource.data.caregiverId;
+
+      // Tasks subcollection
+      match /tasks/{taskId} {
+        // Caregiver and elderly can read tasks
+        allow read: if request.auth != null && (
+          request.auth.uid == get(/databases/$(database)/documents/elderly/$(elderlyId)).data.caregiverId ||
+          request.auth.token.elderlyId == elderlyId
+        );
+        
+        // Only caregiver can create tasks
+        allow create: if request.auth != null &&
+          request.auth.uid == get(/databases/$(database)/documents/elderly/$(elderlyId)).data.caregiverId;
+        
+        // Elderly can only update status and completedAt
+        // Caregiver can update everything
+        allow update: if request.auth != null && (
+          (request.auth.uid == get(/databases/$(database)/documents/elderly/$(elderlyId)).data.caregiverId) ||
+          (request.auth.token.elderlyId == elderlyId &&
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt', 'acknowledgedAt', 'updatedAt']))
+        );
+        
+        // Only caregiver can delete
+        allow delete: if request.auth != null &&
+          request.auth.uid == get(/databases/$(database)/documents/elderly/$(elderlyId)).data.caregiverId;
+      }
+    }
+
+    // Medications collection
+    match /medications/{medicationId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Reminders collection
+    match /reminders/{reminderId} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Escalation logs
+    match /escalationLogs/{logId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}
