@@ -1,17 +1,24 @@
+// Validates elderly login via access key
+
 import {onCall, HttpsError, CallableRequest} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-admin.initializeApp();
+if (!admin.apps.length) {
+  admin.initializeApp();
+}
 
+// Request payload for validating elderly access key
 interface ValidateElderlyKeyRequest {
   accessKey: string;
 }
 
+// Cloud Function: Validates elderly's 6-character access key
 export const validateElderlyKey = onCall(
   {region: "us-west1"},
   async (request: CallableRequest<ValidateElderlyKeyRequest>) => {
     const {accessKey} = request.data;
 
+    // Validate access key format (must be exactly 6 characters)
     if (!accessKey || accessKey.length !== 6) {
       throw new HttpsError(
         "invalid-argument",
@@ -19,7 +26,7 @@ export const validateElderlyKey = onCall(
       );
     }
 
-    // Find elderly by access key
+    // Query elderly collection for matching access key + active status
     const elderlySnapshot = await admin.firestore()
       .collection("elderly")
       .where("accessKey", "==", accessKey.toUpperCase())
@@ -34,17 +41,20 @@ export const validateElderlyKey = onCall(
     const elderlyDoc = elderlySnapshot.docs[0];
     const elderlyData = elderlyDoc.data();
 
-    // Get caregiver name
+    // Fetch caregiver info to include name in response
     const caregiverDoc = await admin.firestore()
       .collection("users")
       .doc(elderlyData.caregiverId)
       .get();
 
-    // Create custom token with elderlyId claim
-    const customToken = await admin.auth().createCustomToken(elderlyDoc.id, {
-      elderlyId: elderlyDoc.id,
-      role: "elderly",
-    });
+    // Generate Firebase custom token with elderly claims
+    const customToken = await admin.auth().createCustomToken(
+      elderlyDoc.id,
+      {
+        elderlyId: elderlyDoc.id,
+        role: "elderly",
+      }
+    );
 
     return {
       customToken,
